@@ -4,117 +4,185 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Pit Wall Pal · F1 viewing companion</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
 <style>
   :root {
-    --bg: #0a0c0f; --panel: #12161b; --panel-2: #181d24; --line: #242b34;
-    --text: #e9edf2; --muted: #8e99a8; --red: #e10600; --red-soft: #3a1412;
-    --green: #2fbf71; --amber: #f0b429; --blue: #4aa3ff;
-    --radius: 12px;
-    font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    /* surfaces */
+    --bg: #07080a; --panel: #0d1013; --panel-2: #12161a; --line: #1e242b; --line-2: #2a323b;
+    --text: #e8ebef; --muted: #7d8896; --dim: #566170;
+    /* brand + timing-screen colours */
+    --red: #e10600; --red-soft: #240a09;
+    --purple: #b14aed; --green: #00d26a; --yellow: #ffd400; --amber: #ff9f1c; --blue: #4aa3ff;
+    --track: var(--green);   /* driven by track status, see body[data-s] */
+    --cut: 10px;             /* the angled corner used on panels */
+    --display: "Barlow Condensed", "Arial Narrow", "Helvetica Neue", Arial, sans-serif;
+    --body: "Barlow", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-family: var(--body);
   }
+  body[data-s="Yellow flag"], body[data-s="Double yellow flag"] { --track: var(--yellow); }
+  body[data-s="Safety Car"], body[data-s="Virtual Safety Car"] { --track: var(--amber); }
+  body[data-s="Red flag"] { --track: var(--red); }
+  body[data-s="Rain"] { --track: var(--blue); }
+
   * { box-sizing: border-box; }
   html, body { height: 100%; }
-  body { margin: 0; background: var(--bg); color: var(--text); font-size: 15px; line-height: 1.45; }
+  body {
+    margin: 0; color: var(--text); font-size: 15px; line-height: 1.45;
+    display: flex; flex-direction: column;
+    background:
+      linear-gradient(rgba(255,255,255,.018) 1px, transparent 1px) 0 0 / 100% 4px,
+      radial-gradient(90% 60% at 15% -10%, #161b22 0%, transparent 60%),
+      var(--bg);
+  }
   button, input, select, textarea { font: inherit; color: inherit; }
   :focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
 
-  .app { display: grid; grid-template-columns: minmax(0, 1fr) 420px; gap: 16px; height: 100%; padding: 16px; max-width: 1500px; margin: 0 auto; }
-  .col { min-height: 0; min-width: 0; display: flex; flex-direction: column; gap: 12px; }
+  /* ---------- top bar: race-control readouts ---------- */
+  .topbar { display: flex; align-items: stretch; gap: 20px; background: #0a0c0f; border-bottom: 1px solid var(--line); padding: 0 16px; min-height: 52px; }
+  .brand { display: flex; align-items: center; gap: 12px; padding-right: 20px; border-right: 1px solid var(--line); }
+  .brand-mark { width: 30px; height: 30px; background: var(--red); display: grid; place-items: center;
+    font-family: var(--display); font-weight: 700; font-size: 16px; letter-spacing: .02em;
+    clip-path: polygon(0 0, 100% 0, 100% 70%, 70% 100%, 0 100%); }
+  .brand h1 { font-family: var(--display); font-size: 22px; font-weight: 700; margin: 0; letter-spacing: .06em; text-transform: uppercase; line-height: 1; }
+  .brand small { display: block; font-family: var(--mono); color: var(--dim); font-size: 10px; letter-spacing: .12em; text-transform: uppercase; margin-top: 3px; }
+
+  .readouts { display: flex; align-items: stretch; flex: 1; min-width: 0; }
+  .ro { display: flex; flex-direction: column; justify-content: center; padding: 0 18px; border-right: 1px solid var(--line); min-width: 0; }
+  .ro span { font-family: var(--mono); font-size: 9.5px; letter-spacing: .14em; text-transform: uppercase; color: var(--dim); }
+  .ro b { font-family: var(--display); font-weight: 600; font-size: 20px; letter-spacing: .04em; text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ro.lap b { font-family: var(--mono); font-weight: 700; font-size: 18px; }
+  .ro.track b { color: var(--track); }
+
+  .sys { display: flex; align-items: center; gap: 16px; font-family: var(--mono); font-size: 11px; color: var(--muted); }
+  #clock { font-size: 14px; color: var(--text); letter-spacing: .06em; }
+
+  .flagbar { height: 3px; background: var(--track); transition: background .25s; flex: none; }
+  body[data-s="Safety Car"] .flagbar, body[data-s="Virtual Safety Car"] .flagbar,
+  body[data-s="Yellow flag"] .flagbar, body[data-s="Double yellow flag"] .flagbar, body[data-s="Red flag"] .flagbar { animation: flash 1.1s steps(2) infinite; }
+  @keyframes flash { 50% { opacity: .35; } }
+
+  /* ---------- layout ---------- */
+  .app { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) 430px; gap: 14px; padding: 14px 16px 16px; width: 100%; max-width: 1560px; margin: 0 auto; }
+  .col { min-height: 0; min-width: 0; display: flex; flex-direction: column; gap: 14px; overflow-y: auto; scrollbar-width: thin; scrollbar-color: var(--line-2) transparent; }
 
   /* ---------- left: stream + context ---------- */
-  .brand { display: flex; align-items: center; gap: 10px; }
-  .brand-mark { width: 26px; height: 26px; border-radius: 6px; background: var(--red); display: grid; place-items: center; font-weight: 800; font-size: 13px; letter-spacing: -0.5px; }
-  .brand h1 { font-size: 15px; margin: 0; letter-spacing: 0.04em; text-transform: uppercase; }
-  .brand small { color: var(--muted); font-size: 12px; }
-
-  .stage { position: relative; aspect-ratio: 16 / 9; border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden;
-    background: radial-gradient(120% 90% at 20% 0%, #1b222c 0%, #0d1015 60%), #0d1015; display: grid; place-items: center; }
-  .stage svg { position: absolute; inset: 0; width: 100%; height: 100%; opacity: .5; }
+  .stage { position: relative; aspect-ratio: 16 / 9; flex: none; border: 1px solid var(--line); overflow: hidden;
+    background: radial-gradient(120% 90% at 20% 0%, #151b23 0%, #090b0e 60%), #090b0e; display: grid; place-items: center;
+    clip-path: polygon(0 0, calc(100% - var(--cut)) 0, 100% var(--cut), 100% 100%, var(--cut) 100%, 0 calc(100% - var(--cut))); }
+  .stage::before, .stage::after { content: ""; position: absolute; width: 22px; height: 22px; border: 2px solid var(--red); pointer-events: none; z-index: 2; }
+  .stage::before { top: 8px; left: 8px; border-right: 0; border-bottom: 0; }
+  .stage::after { bottom: 8px; right: 8px; border-left: 0; border-top: 0; }
+  .stage svg { position: absolute; inset: 0; width: 100%; height: 100%; opacity: .55; }
   .stage-msg { position: relative; text-align: center; padding: 0 24px; max-width: 520px; }
-  .stage-msg strong { display: block; font-size: 18px; margin-bottom: 6px; }
+  .stage-msg strong { display: block; font-family: var(--display); font-size: 24px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; margin-bottom: 6px; }
   .stage-msg span { color: var(--muted); font-size: 13px; }
-  .pill { position: absolute; top: 12px; left: 12px; background: var(--red); color: #fff; font-size: 11px; font-weight: 700; letter-spacing: .08em; padding: 3px 8px; border-radius: 999px; display: flex; gap: 6px; align-items: center; }
+  .pill { position: absolute; top: 16px; left: 38px; z-index: 3; background: var(--red); color: #fff; font-family: var(--mono); font-size: 10.5px; font-weight: 700; letter-spacing: .14em; padding: 3px 9px; display: flex; gap: 7px; align-items: center; }
   .pill i { width: 6px; height: 6px; background: #fff; border-radius: 50%; animation: pulse 1.4s infinite; }
   @keyframes pulse { 50% { opacity: .25; } }
-  .status-badge { position: absolute; top: 12px; right: 12px; font-size: 12px; padding: 3px 10px; border-radius: 999px; background: #0008; border: 1px solid var(--line); }
-  .status-badge[data-s="Yellow flag"], .status-badge[data-s="Double yellow flag"] { background: #3a2f08; border-color: #7a6210; color: #ffd75e; }
-  .status-badge[data-s="Safety Car"], .status-badge[data-s="Virtual Safety Car"] { background: #3a2a08; border-color: #8a5e10; color: #ffb454; }
-  .status-badge[data-s="Red flag"] { background: var(--red-soft); border-color: #7a1f1a; color: #ff7b72; }
-  .status-badge[data-s="Rain"] { background: #0c2238; border-color: #1c4a78; color: #7cc0ff; }
+  .status-badge { position: absolute; top: 16px; right: 38px; z-index: 3; font-family: var(--mono); font-size: 10.5px; letter-spacing: .1em; text-transform: uppercase; padding: 3px 10px; background: #000a; border: 1px solid var(--track); color: var(--track); }
 
-  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px; }
-  .panel h2 { margin: 0 0 2px; font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 600; }
+  .panel { position: relative; background: var(--panel); border: 1px solid var(--line); padding: 14px 14px 16px; flex: none;
+    clip-path: polygon(0 0, calc(100% - var(--cut)) 0, 100% var(--cut), 100% 100%, 0 100%); }
+  .panel::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--red); }
+  .panel h2 { margin: 0 0 2px; font-family: var(--display); font-size: 17px; text-transform: uppercase; letter-spacing: .08em; color: var(--text); font-weight: 600; }
   .panel p.hint { margin: 0 0 12px; color: var(--muted); font-size: 12.5px; }
   .ctx-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
   .ctx-grid .wide { grid-column: span 2; }
-  label.f { display: grid; gap: 4px; font-size: 12px; color: var(--muted); }
-  .f input, .f select { background: var(--panel-2); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; width: 100%; }
+  label.f { display: grid; gap: 5px; font-family: var(--mono); font-size: 10px; letter-spacing: .12em; text-transform: uppercase; color: var(--dim); }
+  .f input, .f select { background: var(--panel-2); border: 1px solid var(--line); border-radius: 0; padding: 9px 10px; width: 100%;
+    font-family: var(--body); font-size: 14px; letter-spacing: 0; text-transform: none; color: var(--text); }
+  .f input:hover, .f select:hover { border-color: var(--line-2); }
+  .f input:focus, .f select:focus { border-color: var(--red); outline: none; }
+  .f select { appearance: none; background-image: linear-gradient(45deg, transparent 50%, var(--muted) 50%), linear-gradient(135deg, var(--muted) 50%, transparent 50%);
+    background-position: calc(100% - 15px) 52%, calc(100% - 10px) 52%; background-size: 5px 5px; background-repeat: no-repeat; padding-right: 28px; }
 
-  details.settings { font-size: 13px; color: var(--muted); }
-  details.settings summary { cursor: pointer; }
-  details.settings .f { margin-top: 10px; }
-  details.settings code { color: var(--text); }
 
-  /* ---------- right: chat ---------- */
-  .chat { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); display: flex; flex-direction: column; min-height: 0; height: 100%; }
-  .chat-head { padding: 12px 14px; border-bottom: 1px solid var(--line); display: grid; gap: 10px; }
+  /* ---------- right: team radio / chat ---------- */
+  .chat { background: var(--panel); border: 1px solid var(--line); display: flex; flex-direction: column; min-height: 0; height: 100%;
+    clip-path: polygon(var(--cut) 0, 100% 0, 100% 100%, 0 100%, 0 var(--cut)); }
+  .chat-head { padding: 12px 14px 12px; border-bottom: 1px solid var(--line); display: grid; gap: 10px; background: #0a0c0f; }
   .chat-title { display: flex; justify-content: space-between; align-items: center; }
-  .chat-title b { font-size: 14px; }
-  .chat-title button { background: none; border: 0; color: var(--muted); cursor: pointer; font-size: 12px; }
-  .seg { display: grid; grid-template-columns: repeat(3, 1fr); background: var(--panel-2); border: 1px solid var(--line); border-radius: 9px; padding: 3px; gap: 3px; }
-  .seg button { border: 0; background: none; padding: 7px 4px; border-radius: 6px; cursor: pointer; color: var(--muted); font-size: 13px; }
-  .seg button[aria-pressed="true"] { background: var(--red); color: #fff; font-weight: 600; }
-  .mode-hint { color: var(--muted); font-size: 12px; margin: 0; }
+  .chat-title b { font-family: var(--display); font-size: 20px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; display: flex; align-items: center; gap: 9px; }
+  .chat-title b::before { content: ""; width: 8px; height: 8px; background: var(--red); animation: pulse 1.4s infinite; }
+  .chat-sub { margin: 0; color: var(--muted); font-size: 12.5px; }
+  .chat-title button { background: none; border: 1px solid var(--line-2); color: var(--muted); cursor: pointer; font-family: var(--mono); font-size: 10px; letter-spacing: .12em; text-transform: uppercase; padding: 4px 9px; }
+  .chat-title button:hover { color: var(--text); border-color: var(--muted); }
 
-  .log { flex: 1; overflow-y: auto; padding: 14px; display: flex; flex-direction: column; gap: 12px; scroll-behavior: smooth; }
-  .msg { max-width: 94%; padding: 10px 12px; border-radius: 12px; background: var(--panel-2); border: 1px solid var(--line); white-space: pre-wrap; word-wrap: break-word; }
-  .msg.user { align-self: flex-end; background: var(--red-soft); border-color: #5a1d19; }
-  .msg.sys { align-self: center; background: none; border: 0; color: var(--muted); font-size: 12.5px; text-align: center; }
-  .tag { display: inline-block; font-size: 10.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; padding: 1px 7px; border-radius: 999px; margin-bottom: 6px; }
-  .tag.rag { background: #10301f; color: var(--green); }
-  .tag.llm { background: #2b2410; color: var(--amber); }
-  .cite { display: inline-block; min-width: 16px; text-align: center; font-size: 10.5px; line-height: 16px; vertical-align: super; margin: 0 1px; border-radius: 4px; background: #1d3a5c; color: #a9d2ff; font-weight: 700; padding: 0 3px; }
-  .sources { margin-top: 8px; display: flex; flex-wrap: wrap; gap: 6px; white-space: normal; }
-  .chip-src { font-size: 11.5px; background: #0f1a28; border: 1px solid #1f3652; color: #a9d2ff; padding: 2px 8px; border-radius: 999px; }
-  details.why { margin-top: 8px; font-size: 12px; color: var(--muted); white-space: normal; }
-  details.why summary { cursor: pointer; }
-  details.why table { width: 100%; border-collapse: collapse; margin-top: 6px; }
+  .log { flex: 1; overflow-y: auto; padding: 14px; display: flex; flex-direction: column; gap: 14px; scroll-behavior: smooth; scrollbar-width: thin; scrollbar-color: var(--line-2) transparent; }
+  .msg { position: relative; max-width: 94%; padding: 10px 12px; background: var(--panel-2); border: 1px solid var(--line); border-left: 3px solid var(--green); white-space: pre-wrap; word-wrap: break-word; }
+  .msg.user { align-self: flex-end; background: var(--red-soft); border-color: #4a1613; border-left-color: #4a1613; border-right: 3px solid var(--red); }
+  .msg.user::before { content: "YOU"; display: block; font-family: var(--mono); font-size: 9.5px; letter-spacing: .16em; color: #ff8a84; margin-bottom: 3px; }
+  .msg.sys { align-self: stretch; max-width: 100%; background: none; border: 0; border-top: 1px dashed var(--line-2); border-bottom: 1px dashed var(--line-2);
+    color: var(--muted); font-family: var(--mono); font-size: 11.5px; line-height: 1.55; text-align: left; padding: 10px 2px; }
+  .cite { display: inline-block; min-width: 16px; text-align: center; font-family: var(--mono); font-size: 10px; line-height: 16px; vertical-align: super; margin: 0 1px; background: #1b1330; color: #d3a5f5; border: 1px solid #3b2866; font-weight: 700; padding: 0 3px; }
+  .sources { margin-top: 9px; display: flex; flex-wrap: wrap; gap: 6px; white-space: normal; font-size: 11.5px; color: var(--muted); align-items: center; }
+  .chip-src { font-family: var(--mono); font-size: 10.5px; background: #0b0f14; border: 1px solid var(--line-2); color: #b9c4d0; padding: 2px 8px; }
+  details.why { margin-top: 9px; font-size: 12px; color: var(--muted); white-space: normal; }
+  details.why summary { cursor: pointer; font-family: var(--mono); font-size: 10px; letter-spacing: .12em; text-transform: uppercase; }
+  details.why table { width: 100%; border-collapse: collapse; margin-top: 6px; font-family: var(--mono); font-size: 10.5px; }
   details.why th, details.why td { text-align: left; padding: 3px 6px 3px 0; border-bottom: 1px solid var(--line); font-weight: 400; vertical-align: top; }
-  details.why th { color: var(--text); font-weight: 600; }
-  .compare { display: grid; grid-template-columns: 1fr; gap: 8px; align-self: stretch; max-width: 100%; }
-  .compare .msg { max-width: 100%; }
+  details.why th { color: var(--text); font-weight: 700; text-transform: uppercase; letter-spacing: .08em; font-size: 9.5px; }
+  .typing { font-family: var(--mono); font-size: 12px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
   .typing::after { content: "…"; animation: blink 1s steps(3) infinite; }
   @keyframes blink { 50% { opacity: .2; } }
-  .err { color: #ff9a93; }
+  .err { color: #ff9a93; font-family: var(--mono); font-size: 12px; }
 
-  .chips { display: flex; gap: 6px; overflow-x: auto; padding: 0 14px 8px; scrollbar-width: thin; }
-  .chips button { flex: none; background: var(--panel-2); border: 1px solid var(--line); border-radius: 999px; padding: 5px 11px; font-size: 12.5px; cursor: pointer; color: var(--text); }
-  .chips button:hover { border-color: #3a4554; }
-  .composer { display: flex; gap: 8px; padding: 12px 14px 14px; border-top: 1px solid var(--line); }
-  .composer input { flex: 1; background: var(--panel-2); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; }
-  .composer button { background: var(--red); border: 0; color: #fff; font-weight: 600; border-radius: 10px; padding: 0 16px; cursor: pointer; }
+  .chips { display: flex; gap: 6px; overflow-x: auto; padding: 10px 14px 10px; border-top: 1px solid var(--line); scrollbar-width: thin; }
+  .chips button { flex: none; background: var(--panel-2); border: 1px solid var(--line-2); padding: 5px 11px; font-family: var(--mono); font-size: 11px; cursor: pointer; color: var(--text); }
+  .chips button:hover { border-color: var(--red); color: #fff; }
+  .composer { display: flex; gap: 8px; padding: 12px 14px 14px; border-top: 1px solid var(--line); background: #0a0c0f; }
+  .composer input { flex: 1; background: var(--panel-2); border: 1px solid var(--line-2); border-radius: 0; padding: 10px 12px; }
+  .composer input:focus { border-color: var(--red); outline: none; }
+  .composer button { background: var(--red); border: 0; color: #fff; font-family: var(--display); font-weight: 700; font-size: 17px; letter-spacing: .12em; text-transform: uppercase; padding: 0 20px; cursor: pointer;
+    clip-path: polygon(0 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%); }
+  .composer button:hover:not(:disabled) { background: #ff1a10; }
   .composer button:disabled { opacity: .5; cursor: progress; }
 
+  @media (max-width: 1100px) { .ro.event { display: none; } }
   @media (max-width: 980px) {
+    body { height: auto; display: block; }
+    .topbar { flex-wrap: wrap; gap: 0 12px; padding: 8px 12px; }
+    .brand { border-right: 0; padding-right: 0; }
+    .readouts { order: 3; flex: 1 0 100%; border-top: 1px solid var(--line); margin-top: 8px; }
+    .ro { padding: 6px 12px 6px 0; margin-right: 12px; }
+    .sys { margin-left: auto; }
     .app { grid-template-columns: minmax(0, 1fr); height: auto; }
+    .col { overflow: visible; }
     .chat { height: 72vh; }
     .ctx-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   }
+  @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; scroll-behavior: auto !important; } }
 </style>
 </head>
 <body>
+
+<header class="topbar">
+  <div class="brand">
+    <div class="brand-mark" aria-hidden="true">PW</div>
+    <div><h1>Pit Wall Pal</h1><small>Race companion</small></div>
+  </div>
+  <div class="readouts" aria-label="Session readout">
+    <div class="ro event"><span>Event</span><b id="ro-event">—</b></div>
+    <div class="ro"><span>Session</span><b id="ro-session">—</b></div>
+    <div class="ro lap"><span>Lap</span><b id="ro-lap">--</b></div>
+    <div class="ro track"><span>Track</span><b id="ro-track">Green</b></div>
+  </div>
+  <div class="sys">
+    <div id="clock" aria-label="Local time">--:--:--</div>
+  </div>
+</header>
+<div class="flagbar" aria-hidden="true"></div>
+
 <div class="app">
 
-  <!-- ================= LEFT: the "stream" and what the viewer says is on screen ================= -->
+  <!-- stream + on-screen context -->
   <main class="col">
-    <div class="brand">
-      <div class="brand-mark" aria-hidden="true">PW</div>
-      <div><h1>Pit Wall Pal</h1><small>Ask anything while you watch. Demo layout: swap the placeholder for your player.</small></div>
-    </div>
-
     <section class="stage" aria-label="Live stream area">
       <svg viewBox="0 0 800 450" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
-        <g fill="none" stroke="#2a3340" stroke-width="14" stroke-linecap="round" stroke-linejoin="round">
+        <g fill="none" stroke="#222b36" stroke-width="14" stroke-linecap="round" stroke-linejoin="round">
           <path d="M120 330 C 90 250, 160 170, 260 190 S 330 300, 430 260 S 470 110, 590 120 S 720 230, 660 320 S 520 380, 420 350 S 190 400, 120 330 Z"/>
         </g>
         <path d="M120 330 C 90 250, 160 170, 260 190 S 330 300, 430 260 S 470 110, 590 120 S 720 230, 660 320 S 520 380, 420 350 S 190 400, 120 330 Z" fill="none" stroke="#e10600" stroke-width="2" stroke-dasharray="3 9" stroke-linecap="round"/>
@@ -149,25 +217,13 @@
       </div>
     </section>
 
-    <details class="panel settings">
-      <summary>Connection to n8n</summary>
-      <label class="f">Webhook base URL
-        <input id="base" spellcheck="false" placeholder="http://localhost:5678/webhook">
-      </label>
-      <p class="hint" style="margin-top:8px">Use <code>/webhook</code> when the workflows are <b>Active</b>, or <code>/webhook-test</code> while a workflow is listening in the editor. Paths used: <code>f1-llm-chat</code> and <code>f1-rag-chat</code>.</p>
-    </details>
   </main>
 
-  <!-- ================= RIGHT: chat ================= -->
+  <!-- chat -->
   <aside class="chat" aria-label="F1 chatbot">
     <div class="chat-head">
-      <div class="chat-title"><b>Ask Pit Wall Pal</b><button id="clear" type="button">Clear chat</button></div>
-      <div class="seg" role="group" aria-label="Chatbot type">
-        <button type="button" data-mode="llm" aria-pressed="false">LLM only</button>
-        <button type="button" data-mode="rag" aria-pressed="true">RAG</button>
-        <button type="button" data-mode="compare" aria-pressed="false">Compare</button>
-      </div>
-      <p class="mode-hint" id="mode-hint"></p>
+      <div class="chat-title"><b>Pit wall radio</b><button id="clear" type="button">Clear</button></div>
+      <p class="chat-sub">Ask anything about the race you are watching.</p>
     </div>
 
     <div class="log" id="log" role="log" aria-live="polite"></div>
@@ -189,26 +245,18 @@
     set(k, v) { try { localStorage.setItem(k, v); } catch { /* storage unavailable */ } },
   };
 
-  const PATHS = { llm: 'f1-llm-chat', rag: 'f1-rag-chat' };
-  const MODE_HINT = {
-    llm: 'Answers from the model\'s own knowledge plus a prompt. No lookup.',
-    rag: 'Searches the F1 notes first (rewrite question → vector + keyword search → fuse rankings), then answers only from them.',
-    compare: 'Asks both bots the same question so you can see where retrieval matters.',
-  };
+  // Where the chat service lives. Change this one line when you deploy.
+  const API_URL = 'http://localhost:5678/webhook/f1-rag-chat';
+  const DEBUG = new URLSearchParams(location.search).has('debug');   // developer view only
   const CHIPS = [
     'What\'s an undercut?', 'Why did everyone slow down?', 'What does parc fermé mean?',
     'Is DRS still a thing?', 'Why does that car look slow at the end of the straight?',
     'What do the tyre colours mean?', 'What is Overtake Mode?', 'What does the black and white flag mean?',
   ];
 
-  const state = { mode: store.get('pw.mode', 'rag'), history: [], busy: false };
-  if (!['llm', 'rag', 'compare'].includes(state.mode)) state.mode = 'rag';
+  const state = { history: [], busy: false };
 
-  // ---------- settings + context ----------
-  const baseEl = $('#base');
-  baseEl.value = store.get('pw.base', 'http://localhost:5678/webhook');
-  baseEl.addEventListener('change', () => store.set('pw.base', baseEl.value.trim()));
-
+  // ---------- context ----------
   const ctxFields = { event: '#c-event', session: '#c-session', lap: '#c-lap', status: '#c-status', note: '#c-note' };
   for (const [k, sel] of Object.entries(ctxFields)) {
     const el = $(sel);
@@ -225,17 +273,17 @@
     const s = $('#c-status').value;
     $('#badge').textContent = s || 'Racing';
     $('#badge').dataset.s = s;
+    // top-bar readouts + track-status strip
+    document.body.dataset.s = s;
+    $('#ro-event').textContent = $('#c-event').value.trim() || '—';
+    $('#ro-session').textContent = $('#c-session').value || '—';
+    $('#ro-lap').textContent = $('#c-lap').value.trim() || '--';
+    $('#ro-track').textContent = s || 'Green';
   }
   paintBadge();
 
-  // ---------- mode switch ----------
-  function setMode(m) {
-    state.mode = m; store.set('pw.mode', m);
-    document.querySelectorAll('.seg button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.mode === m)));
-    $('#mode-hint').textContent = MODE_HINT[m];
-  }
-  document.querySelectorAll('.seg button').forEach(b => b.addEventListener('click', () => setMode(b.dataset.mode)));
-  setMode(state.mode);
+  function tick() { $('#clock').textContent = new Date().toLocaleTimeString([], { hour12: false }); }
+  tick(); setInterval(tick, 1000);
 
   // ---------- rendering (textContent only, so model output can never inject HTML) ----------
   function h(tag, cls, text) { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
@@ -252,85 +300,69 @@
     }
   }
 
-  function fillBotMessage(box, kind, data) {
-    box.replaceChildren(h('span', 'tag ' + kind, kind === 'rag' ? 'RAG' : 'LLM only'), h('br'));
+  function fillBotMessage(box, data) {
     const body = h('span');
-    writeRich(body, data.answer || '(empty answer)');
-    box.appendChild(body);
+    writeRich(body, data.answer || 'Sorry, I could not come up with an answer. Try asking another way.');
+    box.replaceChildren(body);
 
-    if (kind === 'rag' && Array.isArray(data.sources) && data.sources.length) {
+    if (Array.isArray(data.sources) && data.sources.length) {
       const cited = data.sources.filter(s => s.cited);
-      const shown = cited.length ? cited : data.sources.slice(0, 3);
-      const wrap = h('div', 'sources');
-      if (!cited.length) wrap.appendChild(h('span', null, 'Closest notes:'));
-      for (const s of shown) wrap.appendChild(h('span', 'chip-src', (s.cited ? '[' + s.n + '] ' : '') + s.title));
-      box.appendChild(wrap);
-
-      const d = h('details', 'why');
-      d.appendChild(h('summary', null, 'How I found this'));
-      const subs = (data.subqueries || []).join('  |  ');
-      d.appendChild(h('div', null, 'Searched for: ' + subs));
-      const tbl = h('table');
-      const head = h('tr'); for (const t of ['#', 'Note', 'vector', 'keyword', 'fused']) head.appendChild(h('th', null, t));
-      tbl.appendChild(head);
-      for (const s of data.sources) {
-        const tr = h('tr');
-        for (const v of [s.n, s.title + (s.cited ? ' ✓' : ''), s.dense ?? '–', s.bm25 ?? '–', s.rrf]) tr.appendChild(h('td', null, String(v)));
-        tbl.appendChild(tr);
+      if (cited.length) {
+        const wrap = h('div', 'sources');
+        wrap.appendChild(h('span', null, 'Sources:'));
+        for (const s of cited) wrap.appendChild(h('span', 'chip-src', '[' + s.n + '] ' + s.title));
+        box.appendChild(wrap);
       }
-      d.appendChild(tbl);
-      box.appendChild(d);
+      if (DEBUG) {   // developer view: add ?debug=1 to the page URL
+        const d = h('details', 'why');
+        d.appendChild(h('summary', null, 'Debug: retrieval'));
+        d.appendChild(h('div', null, 'Searched for: ' + (data.subqueries || []).join('  |  ')));
+        const tbl = h('table');
+        const head = h('tr'); for (const t of ['#', 'Note', 'vector', 'keyword', 'fused']) head.appendChild(h('th', null, t));
+        tbl.appendChild(head);
+        for (const s of data.sources) {
+          const tr = h('tr');
+          for (const v of [s.n, s.title + (s.cited ? ' ✓' : ''), s.dense ?? '–', s.bm25 ?? '–', s.rrf]) tr.appendChild(h('td', null, String(v)));
+          tbl.appendChild(tr);
+        }
+        d.appendChild(tbl);
+        box.appendChild(d);
+      }
     }
   }
 
-  // ---------- talking to n8n ----------
-  async function ask(kind, question) {
-    const url = baseEl.value.trim().replace(/\/+$/, '') + '/' + PATHS[kind];
+  // ---------- talking to the chat service ----------
+  const FRIENDLY_ERROR = 'The pit wall radio is down for a moment. Please try again in a few seconds.';
+  async function ask(question) {
     const ctl = new AbortController();
     const timer = setTimeout(() => ctl.abort(), 60000);
     try {
-      const r = await fetch(url, {
+      const r = await fetch(API_URL, {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, signal: ctl.signal,
         body: JSON.stringify({ question, context: getContext(), history: state.history.slice(-6) }),
       });
-      if (!r.ok) throw new Error('n8n answered HTTP ' + r.status + (r.status === 404 ? ' (is the workflow Active, or listening if you use /webhook-test?)' : ''));
+      if (!r.ok) throw new Error('HTTP ' + r.status);
       const data = await r.json();
       return Array.isArray(data) ? data[0] : data;
-    } catch (e) {
-      if (e.name === 'AbortError') throw new Error('Timed out after 60 s.');
-      if (e instanceof TypeError) throw new Error('Could not reach ' + url + '. Check n8n is running, the workflow is Active, and the base URL above.');
-      throw e;
     } finally { clearTimeout(timer); }
-  }
-
-  async function runInto(box, kind, question) {
-    box.className = 'msg'; box.replaceChildren(h('span', 'typing', 'Thinking'));
-    try {
-      const data = await ask(kind, question);
-      fillBotMessage(box, kind, data);
-      return data;
-    } catch (e) {
-      box.replaceChildren(h('span', 'err', e.message));
-      return null;
-    }
   }
 
   async function send(question) {
     question = question.trim();
     if (!question || state.busy) return;
     state.busy = true; $('#send').disabled = true;
-    log.appendChild(h('div', 'msg user', question)); scroll();
+    log.appendChild(h('div', 'msg user', question));
+    const box = h('div', 'msg', null);
+    box.appendChild(h('span', 'typing', 'Thinking'));
+    log.appendChild(box); scroll();
 
     let reply = null;
-    if (state.mode === 'compare') {
-      const wrap = h('div', 'compare');
-      const a = h('div', 'msg'), b = h('div', 'msg');
-      wrap.append(a, b); log.appendChild(wrap); scroll();
-      const [llm, rag] = await Promise.all([runInto(a, 'llm', question), runInto(b, 'rag', question)]);
-      reply = rag || llm;
-    } else {
-      const box = h('div', 'msg'); log.appendChild(box); scroll();
-      reply = await runInto(box, state.mode, question);
+    try {
+      reply = await ask(question);
+      fillBotMessage(box, reply || {});
+    } catch (e) {
+      if (DEBUG) console.error(e);
+      box.replaceChildren(h('span', 'err', FRIENDLY_ERROR));
     }
     state.history.push({ role: 'user', content: question });
     if (reply && reply.answer) state.history.push({ role: 'assistant', content: reply.answer });
@@ -345,7 +377,7 @@
 
   function welcome() {
     log.replaceChildren(
-      h('div', 'msg sys', 'Hi! I explain F1 rules, flags and jargon in plain words. I can\'t see the live timing, so I can\'t tell you who is leading, but I can explain what is happening on your screen. Tap a question or type your own.')
+      h('div', 'msg sys', 'PIT WALL ONLINE. I explain F1 rules, flags and jargon in plain words. No live timing here, so I can\'t say who is leading, but I can explain what is happening on your screen. Tap a question or type your own.')
     );
   }
   welcome();
