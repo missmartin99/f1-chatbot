@@ -438,8 +438,8 @@ def build_ingest(kb_json: str) -> dict:
         node("Store F1 notes", "@n8n/n8n-nodes-langchain.vectorStoreInMemory", 1.3,
              {"mode": "insert", "memoryKey": memory_key(), "clearStore": True}, [480, 260]),
         embeddings("Embeddings OpenAI", [400, 500]),
-        node("Default Data Loader", "@n8n/n8n-nodes-langchain.documentDefaultDataLoader", 1,
-             {"jsonMode": "expressionData", "jsonData": "={{ $json.text }}",
+        node("Default Data Loader", "@n8n/n8n-nodes-langchain.documentDefaultDataLoader", 1.1,
+             {"textSplittingMode": "simple", "jsonMode": "expressionData", "jsonData": "={{ $json.text }}",
               "options": {"metadata": {"metadataValues": [
                   {"name": "id", "value": "={{ $json.id }}"},
                   {"name": "title", "value": "={{ $json.title }}"},

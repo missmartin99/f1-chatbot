@@ -8,8 +8,8 @@
         "width": 620,
         "color": 7
       },
-      "id": "d7468dbf-ade5-4ff1-bda0-f0e9ae9b981a",
-      "name": "Note b5a7",
+      "id": "3db6ae84-84b8-4149-9bbf-30f5fdacd507",
+      "name": "Note fa3d",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
@@ -26,7 +26,7 @@
           "allowedOrigins": "*"
         }
       },
-      "id": "78bbd34f-9014-45a8-bee1-1f3d9fd85b87",
+      "id": "642e1b82-fc0d-4c28-aa4a-5764b70fb020",
       "name": "Chat Webhook",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
@@ -34,13 +34,13 @@
         0,
         300
       ],
-      "webhookId": "35f65cf8-89b8-4523-89ed-c3bb6d891840"
+      "webhookId": "2787a3e0-358c-4ce1-b747-b675bd8e5698"
     },
     {
       "parameters": {
         "jsCode": "// Normalise the request sent by the chat page.\nconst body = $input.first().json.body || {};\nconst question = String(body.question || '').trim().slice(0, 600);\nif (!question) {\n  throw new Error('The request body needs a \"question\" field.');\n}\n\n// What the viewer is currently watching (optional, sent by the page).\nconst ctx = body.context || {};\nconst parts = [];\nif (ctx.event)   parts.push('Event: ' + String(ctx.event).slice(0, 80));\nif (ctx.session) parts.push('Session: ' + String(ctx.session).slice(0, 40));\nif (ctx.lap)     parts.push('Lap: ' + String(ctx.lap).slice(0, 20));\nif (ctx.status)  parts.push('Track status shown on screen: ' + String(ctx.status).slice(0, 60));\nif (ctx.note)    parts.push('Viewer note: ' + String(ctx.note).slice(0, 200));\nconst live = parts.length ? parts.join(' | ') : 'not provided';\nconst liveHint = [ctx.status, ctx.note].filter(Boolean).map(x => String(x).slice(0, 80)).join(' ');\n\n// Short chat history (the page is stateless, so it sends the last turns).\nconst history = Array.isArray(body.history) ? body.history.slice(-6) : [];\nconst historyText = history\n  .map(m => ((m && m.role === 'user') ? 'Viewer: ' : 'Assistant: ') + String((m && m.content) || '').slice(0, 500))\n  .join('\\n') || '(no earlier messages)';\n\nreturn [{ json: { question, live, liveHint, historyText } }];\n"
       },
-      "id": "520a0c9a-b8ab-4c99-b5bb-a75b4245ace6",
+      "id": "3185962f-9cf4-464f-a175-428f7a6b89af",
       "name": "Prepare",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -62,7 +62,7 @@
           ]
         }
       },
-      "id": "1d31c57e-3384-4333-88a3-c1923e593d51",
+      "id": "77f8c607-26e5-4792-ad32-f8e97110bef5",
       "name": "Pit Wall Pal (LLM only)",
       "type": "@n8n/n8n-nodes-langchain.chainLlm",
       "typeVersion": 1.5,
@@ -85,7 +85,7 @@
           "maxTokens": 300
         }
       },
-      "id": "c03a6f28-870b-4270-8c7d-77fb7076e101",
+      "id": "26f7b35a-bffd-4add-9982-b220a0bbae8c",
       "name": "OpenAI Chat Model",
       "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
       "typeVersion": 1.2,
@@ -98,7 +98,7 @@
       "parameters": {
         "jsCode": "const first = $input.first().json || {};\nconst answer = String(first.text || first.output || '').trim();\nreturn [{ json: {\n  mode: 'llm',\n  answer: answer || \"Sorry, I couldn't get an answer from the language model just now. Please try again.\",\n  ok: Boolean(answer),\n} }];\n"
       },
-      "id": "1c0be553-aa75-4aeb-9a1c-bc66730d3a3f",
+      "id": "b037f396-7183-4ad4-86e7-59b2e1e03eb3",
       "name": "Format response",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -121,7 +121,7 @@
           }
         }
       },
-      "id": "86ac9a1d-ea3e-4e98-bfeb-e3ef20dade6e",
+      "id": "3a3635fd-05a2-4d61-a685-326d1bc59417",
       "name": "Respond to Webhook",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
