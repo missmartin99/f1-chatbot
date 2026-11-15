@@ -1,0 +1,35 @@
+{
+  "version": "1.0",
+  "corpus": "kb/*.md (F1 rules, terms, 2026 regulations), verified Nov 2026",
+  "notes": "Mirrors the class goldset idea: each category is designed to expose a different failure mode. must_include is a list of regexes that must ALL match the answer (case-insensitive). It is a quick smoke check, not a replacement for reading the answers or running RAGAS.",
+  "questions": [
+    {"id": "q01", "category": "exact_match", "question": "How many points does the winner of an F1 sprint race get?", "must_include": ["\\b8\\b|eight"]},
+    {"id": "q02", "category": "exact_match", "question": "How many minutes does Q3 last in 2026 qualifying?", "must_include": ["13"]},
+    {"id": "q03", "category": "exact_match", "question": "How many points does second place get in a grand prix?", "must_include": ["18"]},
+    {"id": "q04", "category": "exact_match", "question": "What colour are soft tyres?", "must_include": ["red"]},
+    {"id": "q05", "category": "exact_match", "question": "What does a black flag mean?", "must_include": ["disqualif"]},
+    {"id": "q06", "category": "exact_match", "question": "How many penalty points lead to a race ban?", "must_include": ["12"]},
+    {"id": "q07", "category": "exact_match", "question": "What is the minimum race distance of a grand prix?", "must_include": ["305"]},
+
+    {"id": "q08", "category": "concept", "question": "What is an undercut?", "must_include": ["pit", "fresh|new"]},
+    {"id": "q09", "category": "concept", "question": "What is parc fermé?", "must_include": ["closed|restrict|lock|cannot|can't"]},
+    {"id": "q10", "category": "concept", "question": "Why do drivers weave side to side on the formation lap?", "must_include": ["tyre|tire", "heat|warm"]},
+    {"id": "q11", "category": "concept", "question": "What is the difference between a Safety Car and a Virtual Safety Car?", "must_include": ["virtual", "gap|delta|physical|bunch"]},
+    {"id": "q12", "category": "concept", "question": "What does 'box, box' mean on the team radio?", "must_include": ["pit"]},
+
+    {"id": "q13", "category": "multi_hop", "question": "If a driver gets a stop-go penalty but a Safety Car comes out, can they serve it right away?", "must_include": ["not|cannot|can't|generally|resum|after|once"]},
+    {"id": "q14", "category": "multi_hop", "question": "Why might a driver who qualified well start the race from the pit lane?", "must_include": ["parc ferm|set-?up|breach|change"]},
+    {"id": "q15", "category": "multi_hop", "question": "On a sprint weekend, does the Sprint result decide the grid for Sunday's race?", "must_include": ["\\bno\\b|not|separate|qualifying"]},
+
+    {"id": "q16", "category": "fresh_2026", "question": "Is DRS still used in F1?", "must_include": ["no longer|removed|gone|replaced|\\bno\\b|not"]},
+    {"id": "q17", "category": "fresh_2026", "question": "What is Overtake Mode?", "must_include": ["second", "battery|electric|energy|power"]},
+    {"id": "q18", "category": "fresh_2026", "question": "How many teams are on the F1 grid in 2026?", "must_include": ["11|eleven"]},
+    {"id": "q19", "category": "fresh_2026", "question": "Which new team joined the F1 grid in 2026?", "must_include": ["cadillac"]},
+    {"id": "q20", "category": "fresh_2026", "question": "Does the fastest lap still earn a bonus point?", "must_include": ["\\bno\\b|not|no longer|longer"]},
+
+    {"id": "q21", "category": "live_data", "question": "Who is leading the race right now?", "must_include": ["can.?t see|cannot see|don.?t have|do not have|no access|not able|live (feed|timing)"]},
+    {"id": "q22", "category": "live_data", "question": "What is the gap between the top two drivers at the moment?", "must_include": ["can.?t see|cannot see|don.?t have|do not have|no access|not able|live (feed|timing)"]},
+
+    {"id": "q23", "category": "out_of_scope", "question": "What is the best pizza topping?", "must_include": ["f1|formula|race|racing|not (something|able)|can.?t help"]}
+  ]
+}

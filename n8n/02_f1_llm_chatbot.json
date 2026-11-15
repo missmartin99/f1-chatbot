@@ -1,0 +1,200 @@
+{
+  "name": "F1 chatbot - 2. LLM-only chatbot",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## LLM-only chatbot (prompting, no retrieval)\n**Webhook → Prepare → Pit Wall Pal (LLM) → Format → Respond**\n\nEverything the model knows comes from its training plus the system prompt (persona, rules, two examples). Great for explaining stable ideas like an undercut. Weak for anything that changed recently, which is the point of comparing it with the RAG bot.\n\nPOST body: question, context (event, session, lap, status, note), history.",
+        "height": 250,
+        "width": 620,
+        "color": 7
+      },
+      "id": "d7468dbf-ade5-4ff1-bda0-f0e9ae9b981a",
+      "name": "Note b5a7",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -40,
+        -80
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "f1-llm-chat",
+        "responseMode": "responseNode",
+        "options": {
+          "allowedOrigins": "*"
+        }
+      },
+      "id": "78bbd34f-9014-45a8-bee1-1f3d9fd85b87",
+      "name": "Chat Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        300
+      ],
+      "webhookId": "35f65cf8-89b8-4523-89ed-c3bb6d891840"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Normalise the request sent by the chat page.\nconst body = $input.first().json.body || {};\nconst question = String(body.question || '').trim().slice(0, 600);\nif (!question) {\n  throw new Error('The request body needs a \"question\" field.');\n}\n\n// What the viewer is currently watching (optional, sent by the page).\nconst ctx = body.context || {};\nconst parts = [];\nif (ctx.event)   parts.push('Event: ' + String(ctx.event).slice(0, 80));\nif (ctx.session) parts.push('Session: ' + String(ctx.session).slice(0, 40));\nif (ctx.lap)     parts.push('Lap: ' + String(ctx.lap).slice(0, 20));\nif (ctx.status)  parts.push('Track status shown on screen: ' + String(ctx.status).slice(0, 60));\nif (ctx.note)    parts.push('Viewer note: ' + String(ctx.note).slice(0, 200));\nconst live = parts.length ? parts.join(' | ') : 'not provided';\nconst liveHint = [ctx.status, ctx.note].filter(Boolean).map(x => String(x).slice(0, 80)).join(' ');\n\n// Short chat history (the page is stateless, so it sends the last turns).\nconst history = Array.isArray(body.history) ? body.history.slice(-6) : [];\nconst historyText = history\n  .map(m => ((m && m.role === 'user') ? 'Viewer: ' : 'Assistant: ') + String((m && m.content) || '').slice(0, 500))\n  .join('\\n') || '(no earlier messages)';\n\nreturn [{ json: { question, live, liveHint, historyText } }];\n"
+      },
+      "id": "520a0c9a-b8ab-4c99-b5bb-a75b4245ace6",
+      "name": "Prepare",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        240,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=LIVE STREAM CONTEXT: {{ $json.live }}\n\nRECENT CHAT:\n{{ $json.historyText }}\n\nVIEWER QUESTION: {{ $json.question }}",
+        "messages": {
+          "messageValues": [
+            {
+              "type": "SystemMessagePromptTemplate",
+              "message": "You are Pit Wall Pal, a friendly Formula 1 explainer built into a live-stream viewing page. The viewer is a beginner who is watching a session right now and got confused by something.\n\nHow to answer:\n- Use plain words. Explain any F1 jargon you use. Be warm, never condescending.\n- Keep it short: 2 to 4 sentences, about 70 words at most, unless the viewer asks for more detail (\"tell me more\").\n- No bullet lists, no headings. Write like you are talking to a friend on the sofa.\n- If a LIVE STREAM CONTEXT line is provided, use it to connect your answer to what the viewer is seeing.\n\nHonesty rules:\n- You do NOT have the live timing feed. Never claim to know current positions, gaps, lap times, who is winning, or what just happened in the race. If asked, say you cannot see the live feed, point them to the on-screen graphics, and offer to explain the terms they are seeing.\n- Formula 1 rules change every year, and 2026 brought the biggest changes in years (new engines, a much bigger electric part, active aerodynamics, a new team). If an answer depends on the current rules and you are not sure, say so plainly instead of guessing. Never invent rule numbers, penalty sizes or point values.\n\nExample 1\nViewer: what is an undercut?\nAssistant: An undercut is a pit stop trick. A driver pits before the car ahead, uses the grip of fresh tyres to set a quick lap, and if it works they come out in front once the rival has also stopped.\n\nExample 2\nViewer: who is leading right now?\nAssistant: I cannot see the live timing, so I do not know who is leading at the moment. Check the timing tower on your screen, and if there is a term in it you do not recognise, ask me and I will explain it."
+            }
+          ]
+        }
+      },
+      "id": "1d31c57e-3384-4333-88a3-c1923e593d51",
+      "name": "Pit Wall Pal (LLM only)",
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.5,
+      "position": [
+        480,
+        300
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list",
+          "cachedResultName": "gpt-4o-mini"
+        },
+        "options": {
+          "temperature": 0.3,
+          "maxTokens": 300
+        }
+      },
+      "id": "c03a6f28-870b-4270-8c7d-77fb7076e101",
+      "name": "OpenAI Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        500,
+        540
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const first = $input.first().json || {};\nconst answer = String(first.text || first.output || '').trim();\nreturn [{ json: {\n  mode: 'llm',\n  answer: answer || \"Sorry, I couldn't get an answer from the language model just now. Please try again.\",\n  ok: Boolean(answer),\n} }];\n"
+      },
+      "id": "1c0be553-aa75-4aeb-9a1c-bc66730d3a3f",
+      "name": "Format response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        780,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "firstIncomingItem",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Access-Control-Allow-Origin",
+                "value": "*"
+              }
+            ]
+          }
+        }
+      },
+      "id": "86ac9a1d-ea3e-4e98-bfeb-e3ef20dade6e",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        1020,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Chat Webhook": {
+      "main": [
+        [
+          {
+            "node": "Prepare",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare": {
+      "main": [
+        [
+          {
+            "node": "Pit Wall Pal (LLM only)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Pit Wall Pal (LLM only)",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pit Wall Pal (LLM only)": {
+      "main": [
+        [
+          {
+            "node": "Format response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format response": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": []
+}

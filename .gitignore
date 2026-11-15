@@ -1,0 +1,7 @@
+.DS_Store
+node_modules/
+.env
+*.key
+__pycache__/
+eval/results.md
+eval/results.csv
