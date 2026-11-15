@@ -136,6 +136,112 @@ div[data-baseweb="input"]:focus-within, div[data-baseweb="select"] > div:focus-w
 """
 html_block(CSS)
 
+# ----------------------------------------------------------------- animation layer
+def car_svg(body: str, accent: str) -> str:
+    """A simple side-on F1 silhouette (generic colours, no real liveries or logos)."""
+    return (
+        '<svg viewBox="0 0 200 56" aria-hidden="true">'
+        f'<rect x="12" y="14" width="3" height="18" fill="#0b0d10"/><rect x="5" y="12" width="17" height="3" fill="{body}"/>'
+        f'<rect x="5" y="9" width="2" height="12" fill="{body}"/>'
+        f'<path d="M12 32 L30 26 L70 24 L92 14 L108 14 L116 24 L150 28 L184 34 L184 38 L12 38 Z" fill="{body}"/>'
+        f'<path d="M58 30 L132 30 L152 33 L58 35 Z" fill="{accent}" opacity=".85"/>'
+        '<path d="M92 15 Q104 3 117 17" fill="none" stroke="#0b0d10" stroke-width="2.6" stroke-linecap="round"/>'
+        f'<circle cx="103" cy="15" r="4" fill="{accent}"/>'
+        f'<rect x="172" y="40" width="26" height="3" fill="{body}"/><rect x="196" y="35" width="2" height="9" fill="{body}"/>'
+        '<circle cx="40" cy="34" r="12" fill="#0b0d10" stroke="#2a323b" stroke-width="3"/><circle cx="40" cy="34" r="4" fill="#2a323b"/>'
+        '<circle cx="160" cy="36" r="10" fill="#0b0d10" stroke="#2a323b" stroke-width="3"/><circle cx="160" cy="36" r="3.5" fill="#2a323b"/>'
+        '</svg>'
+    )
+
+
+# (bottom, width px, seconds per loop, start delay, opacity, blur px, direction, body colour, accent)
+CARS = [
+    ("1.5vh", 230, 8.0, 1.0, 0.60, 0, "r", "#e10600", "#ffffff"),    # foreground lane, red
+    ("1.5vh", 200, 9.5, 12.0, 0.50, 0, "l", "#229971", "#d9f7ea"),   # foreground lane, green, other way
+    ("24vh", 150, 15.0, 4.0, 0.16, 1, "l", "#aab4c0", "#e10600"),    # mid lanes: fainter, blurrier, slower
+    ("48vh", 115, 20.0, 9.0, 0.11, 2, "r", "#ff8000", "#1b1b1b"),
+    ("70vh", 90, 26.0, 14.0, 0.08, 2, "l", "#3671c6", "#ffd400"),
+]
+BG_HTML = '<div class="pw-bg" aria-hidden="true">' + "".join(
+    f'<div class="pw-car {d}" style="bottom:{b};--w:{w}px;--o:{o};--c:{body};animation-duration:{dur}s;'
+    f'animation-delay:{delay}s;filter:blur({blur}px)"><div class="pw-streak"></div>{car_svg(body, acc)}</div>'
+    for b, w, dur, delay, o, blur, d, body, acc in CARS
+) + '<div class="pw-kerb"></div></div>'
+
+# five start lights, each switching on in turn, then all out together
+_LIGHT_KEYFRAMES = "".join(
+    f"@keyframes pw-l{i}{{0%,{i * 13 + 4}%{{background:#2a1210;box-shadow:none}}"
+    f"{i * 13 + 8}%,76%{{background:#ff1a10;box-shadow:0 0 12px 3px rgba(255,26,16,.75)}}"
+    f"80%,100%{{background:#2a1210;box-shadow:none}}}}" for i in range(5)
+)
+_LIGHT_USE = "".join(f".pw-light:nth-child({i + 1}){{animation:pw-l{i} 2.6s linear infinite}}" for i in range(5))
+
+ANIM_CSS = """<style>
+.stApp, [data-testid="stAppViewContainer"], [data-testid="stMain"], .main { background: transparent !important; }
+.stApp { background: linear-gradient(rgba(255,255,255,.018) 1px, transparent 1px) 0 0/100% 4px,
+         radial-gradient(90% 60% at 15% -10%, #161b22 0%, transparent 60%), #07080a !important; }
+.block-container { position: relative; z-index: 1; padding-bottom: 3.2rem !important; }
+.pw-bg { position: fixed; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; }
+.pw-car { position: absolute; left: 0; display: flex; align-items: center; opacity: 0; will-change: transform;
+          animation-timing-function: linear; animation-iteration-count: infinite; }
+.pw-car svg { width: var(--w); height: auto; flex: none; }
+.pw-streak { width: calc(var(--w) * .9); height: 2px; margin-right: -8px; background: linear-gradient(90deg, transparent, var(--c)); }
+.pw-car.r { animation-name: pw-drive-r; }
+.pw-car.l { animation-name: pw-drive-l; flex-direction: row-reverse; }
+.pw-car.l svg { transform: scaleX(-1); }
+.pw-car.l .pw-streak { margin-right: 0; margin-left: -8px; background: linear-gradient(270deg, transparent, var(--c)); }
+@keyframes pw-drive-r { 0% { transform: translateX(-45vw); opacity: 0; } 6% { opacity: var(--o); } 66% { opacity: var(--o); }
+                        74% { transform: translateX(115vw); opacity: 0; } 100% { transform: translateX(115vw); opacity: 0; } }
+@keyframes pw-drive-l { 0% { transform: translateX(115vw); opacity: 0; } 6% { opacity: var(--o); } 66% { opacity: var(--o); }
+                        74% { transform: translateX(-45vw); opacity: 0; } 100% { transform: translateX(-45vw); opacity: 0; } }
+.pw-kerb { position: absolute; left: 0; right: 0; bottom: 0; height: 7px; opacity: .55;
+           background: repeating-linear-gradient(90deg, #e10600 0 28px, #e8ebef 28px 56px); animation: pw-kerb 1.6s linear infinite; }
+@keyframes pw-kerb { to { background-position: 56px 0; } }
+
+/* header: shimmer on the logo, light sweeping along the status strip */
+.pw-mark { position: relative; overflow: hidden; }
+.pw-mark:after { content: ""; position: absolute; inset: 0; background: linear-gradient(110deg, transparent 30%, rgba(255,255,255,.5) 50%, transparent 70%);
+                 transform: translateX(-120%); animation: pw-sheen 4.5s ease-in-out infinite; }
+@keyframes pw-sheen { 0%, 60% { transform: translateX(-120%); } 100% { transform: translateX(120%); } }
+.pw-flag { position: relative; overflow: hidden; }
+.pw-flag:after { content: ""; position: absolute; top: 0; bottom: 0; width: 18%; background: linear-gradient(90deg, transparent, rgba(255,255,255,.6), transparent);
+                 animation: pw-sweep 3.4s linear infinite; }
+@keyframes pw-sweep { from { left: -20%; } to { left: 100%; } }
+
+/* stream box: dashes flow along the circuit and a car-dot laps it */
+.pw-trk { animation: pw-dash 1.1s linear infinite; }
+@keyframes pw-dash { to { stroke-dashoffset: -12; } }
+.pw-dot { offset-path: path("M120 330 C 90 250, 160 170, 260 190 S 330 300, 430 260 S 470 110, 590 120 S 720 230, 660 320 S 520 380, 420 350 S 190 400, 120 330 Z");
+          offset-rotate: 0deg; animation: pw-lap 9s linear infinite; filter: drop-shadow(0 0 5px #e10600) drop-shadow(0 0 2px #fff); }
+@keyframes pw-lap { from { offset-distance: 0%; } to { offset-distance: 100%; } }
+.pw-live i { animation: pw 1.4s infinite; }
+
+/* chat: messages slide in, controls glow */
+[data-testid="stChatMessage"] { animation: pw-in .38s cubic-bezier(.2,.8,.2,1); transition: border-color .2s, box-shadow .2s; }
+[data-testid="stChatMessage"]:hover { box-shadow: 0 0 0 1px #2a323b, 0 6px 22px rgba(0,0,0,.45); }
+@keyframes pw-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+.stButton > button { transition: border-color .15s, box-shadow .15s, transform .15s; }
+.stButton > button:hover { box-shadow: 0 0 14px rgba(225,6,0,.45); transform: translateY(-1px); }
+.stButton > button:active { transform: translateY(1px); }
+[data-testid="stChatInput"] { transition: box-shadow .2s; }
+[data-testid="stChatInput"]:focus-within { box-shadow: 0 0 0 1px #e10600, 0 0 18px rgba(225,6,0,.35); }
+
+/* "thinking" = F1 start lights */
+.pw-lights { display: flex; align-items: center; gap: 8px; padding: 4px 0; }
+.pw-light { width: 15px; height: 15px; border-radius: 50%; background: #2a1210; border: 1px solid #3a1c1a; }
+.pw-lights span { margin-left: 8px; font: 400 11px var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+""" + _LIGHT_KEYFRAMES + _LIGHT_USE + """
+@media (prefers-reduced-motion: reduce) {
+  .pw-bg { display: none; }
+  *, *:before, *:after { animation: none !important; transition: none !important; }
+  .pw-light:nth-child(-n+3) { background: #ff1a10; }
+}
+</style>"""
+html_block(ANIM_CSS)
+html_block(BG_HTML)
+
+LIGHTS_HTML = '<div class="pw-lights">' + '<div class="pw-light"></div>' * 5 + '<span>Lights out…</span></div>'
+
 # ----------------------------------------------------------------- state
 ss = st.session_state
 ss.setdefault("messages", [])      # [{"role": "user"|"assistant", "content": str, "sources": [...], "raw": dict}]
@@ -225,7 +331,8 @@ with left:
     <div class="pw-stage">
       <svg viewBox="0 0 800 450" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
         <path d="M120 330 C 90 250, 160 170, 260 190 S 330 300, 430 260 S 470 110, 590 120 S 720 230, 660 320 S 520 380, 420 350 S 190 400, 120 330 Z" fill="none" stroke="#222b36" stroke-width="14" stroke-linecap="round"/>
-        <path d="M120 330 C 90 250, 160 170, 260 190 S 330 300, 430 260 S 470 110, 590 120 S 720 230, 660 320 S 520 380, 420 350 S 190 400, 120 330 Z" fill="none" stroke="#e10600" stroke-width="2" stroke-dasharray="3 9" stroke-linecap="round"/>
+        <path d="M120 330 C 90 250, 160 170, 260 190 S 330 300, 430 260 S 470 110, 590 120 S 720 230, 660 320 S 520 380, 420 350 S 190 400, 120 330 Z" class="pw-trk" fill="none" stroke="#e10600" stroke-width="2" stroke-dasharray="3 9" stroke-linecap="round"/>
+        <circle class="pw-dot" r="5" fill="#ffffff"/>
       </svg>
       <div class="pw-live">LIVE</div>
       <div class="pw-badge" style="color:{colour};border-color:{colour}">{esc('Racing' if ctx_status == 'Normal racing' else ctx_status)}</div>
@@ -282,7 +389,9 @@ with right:
         with box:
             render_message({"role": "user", "content": question})
             with st.chat_message("assistant"):
-                with st.spinner("Thinking…"):
+                thinking = st.empty()
+                thinking.markdown(LIGHTS_HTML, unsafe_allow_html=True)
+                if True:
                     try:
                         t0 = time.time()
                         data = ask_backend(question, context)
@@ -292,6 +401,7 @@ with right:
                         if DEBUG:
                             st.exception(e)
                         reply = {"role": "assistant", "content": FRIENDLY_ERROR, "sources": []}
+                thinking.empty()
         ss.messages.append({"role": "user", "content": question})
         ss.messages.append(reply)
         ss.asked += 1
