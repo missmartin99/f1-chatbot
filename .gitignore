@@ -5,3 +5,5 @@ node_modules/
 __pycache__/
 eval/results.md
 eval/results.csv
+.venv/
+.streamlit/secrets.toml
